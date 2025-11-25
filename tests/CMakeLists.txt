@@ -1,6 +1,6 @@
 find_package(Catch2 3 REQUIRED)
 add_executable(tests_run ComponentTests.cpp
-        DesTests.cpp
+        DESTests.cpp
         utils.cpp)
 
 target_link_libraries(tests_run PRIVATE DES_lib)

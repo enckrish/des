@@ -9,7 +9,7 @@ bool read_bit(const uint_fast64_t num, const unsigned int k) {
     return (num & mask) != 0;
 }
 
-void set_bit(uint_fast64_t& num, const unsigned int k) {
+void set_bit(uint_fast64_t &num, const unsigned int k) {
     uint_fast64_t mask = 1;
     mask <<= k;
     num |= mask;

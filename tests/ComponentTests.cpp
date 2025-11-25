@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include "DES.h"
-#include "des_tables.h"
+#include "DES_tables.h"
 #include <bitset>
 
 unsigned long rand64();
-
 
 template<size_t N>
 std::bitset<N> rotate_left(const std::bitset<N> &b, size_t n) {
@@ -45,14 +44,14 @@ TEST_CASE("28-bit rotation", "[ComponentTests]") {
 
 TEST_CASE("Key Rotate", "[ComponentTests]") {
     const uint_fast64_t key = rand64() % (1UL << 56);
-    auto rotbs_r = std::bitset<28>(key);
-    rotbs_r = rotate_left(rotbs_r, 2);
-    auto rotbs_l = std::bitset<28>(key >> 28);
-    rotbs_l = rotate_left(rotbs_l, 2);
+    auto rot_r = std::bitset<28>(key);
+    rot_r = rotate_left(rot_r, 2);
+    auto rot_l = std::bitset<28>(key >> 28);
+    rot_l = rotate_left(rot_l, 2);
 
-    const auto rotbs = rotbs_l.to_ulong() << 28 | rotbs_r.to_ulong();
+    const auto rot = rot_l.to_ulong() << 28 | rot_r.to_ulong();
     const auto rot_impl = DES::circ_shift_key(key, 2, true);
-    CHECK(rotbs == rot_impl);
+    CHECK(rot == rot_impl);
 }
 
 TEST_CASE("apply_permutation/IP-InverseIP<->FP", "[ComponentTests]") {
@@ -65,4 +64,3 @@ TEST_CASE("apply_permutation/IP-InverseIP<->FP", "[ComponentTests]") {
     INFO("FP:\n" << std::bitset<64>(inv_ipv));
     CHECK(data == inv_ipv);
 }
-

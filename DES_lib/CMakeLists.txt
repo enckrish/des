@@ -6,7 +6,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         DES.cpp
-        tables.cpp
+        DES_tables.cpp
         utils.cpp
 )
 

@@ -1,9 +1,11 @@
 #include <cstdint>
 #include "DES.h"
-#include "des_tables.h"
+
+#include "DES_tables.h"
 
 bool read_bit(uint_fast64_t num, unsigned int k);
-void set_bit(uint_fast64_t& num, unsigned int k);
+
+void set_bit(uint_fast64_t &num, unsigned int k);
 
 namespace DES {
     /// Bit-wise permutes a value, based on a permutation array
@@ -11,12 +13,12 @@ namespace DES {
     /// @tparam V type of permutation array
     /// @param value input to apply permutation on
     /// @param perm permutation array; perm[i] stores index in value of bit to store at index i of out
-    /// @param psize length of `perm`
+    /// @param perm_size length of `perm`
     /// @return permutated value
     template<typename T, typename V>
-    T apply_permutation(const T value, const V perm[], const int psize) {
+    T apply_permutation(const T value, const V perm[], const int perm_size) {
         T out{0};
-        for (auto i = 0; i < psize; i++) {
+        for (auto i = 0; i < perm_size; i++) {
             if (read_bit(value, perm[i] - 1)) {
                 set_bit(out, i);
             }
@@ -84,8 +86,8 @@ namespace DES {
         // split into groups of 6 bits
         // and apply them on the corresponding S-Box
         for (auto i = 0; i < 8; i++) {
-            constexpr uint_fast32_t mmsk = 0x3f;
-            const auto v = block >> (6 * (7 - i)) & mmsk;
+            constexpr uint_fast32_t msk = 0x3f;
+            const auto v = block >> (6 * (7 - i)) & msk;
             const auto row = v >> 5 | v & 0b1;
             const auto col = (v & 0b011110) >> 1;
 
@@ -94,18 +96,18 @@ namespace DES {
         return out;
     }
 
-    uint_fast64_t apply_round_fn(uint_fast64_t rb, const uint_fast64_t rkey) {
+    uint_fast64_t apply_round_fn(uint_fast64_t rb, const uint_fast64_t r_key) {
         rb = apply_permutation(rb, Table::E, 48);
-        rb ^= rkey;
+        rb ^= r_key;
         rb = S_box_process(rb);
         rb = apply_permutation(rb, Table::P, 32);
         return rb;
     }
 
-    uint_fast64_t process(uint_fast64_t block, uint_fast64_t key, const unsigned int rounds, const bool encrypt) {
+    uint_fast64_t process(uint_fast64_t block, uint_fast64_t key, const bool encrypt) {
         block = apply_permutation(block, Table::IP, 64);
         key = apply_permutation(key, Table::PC1, 56);
-        for (auto i = 0; i < rounds; i++) {
+        for (auto i = 0; i < 16; i++) {
             // Calculate round key K_r
             const unsigned shift_n = encrypt ? Table::L_SHIFTS[i] : Table::R_SHIFTS[i];
             key = circ_shift_key(key, shift_n, encrypt);
@@ -123,5 +125,56 @@ namespace DES {
         block = block >> 32 | block << 32;
         block = apply_permutation(block, Table::FP, 64);
         return block;
+    }
+
+    uint_fast64_t process_with_keys(uint_fast64_t block, const uint_fast64_t keys[16], const bool encrypt) {
+        block = apply_permutation(block, Table::IP, 64);
+        for (auto i = 0; i < 16; i++) {
+            // Calculate round key K_r
+            const unsigned key_index = encrypt ? i : 16 - i - 1;
+            // Apply round function on right half of block: F(B_r, K_r)
+            auto rb = apply_round_fn(block & 0xffffffff, keys[key_index]);
+
+            // XOR with left half: B_l ^ F(B_r, K_r)
+            rb ^= block >> 32;
+            // B_r || B_l ^ F(B_r, K_r)
+            block = block << 32 | rb;
+        }
+
+        block = block >> 32 | block << 32;
+        block = apply_permutation(block, Table::FP, 64);
+        return block;
+    }
+
+    void generate_round_keys(uint_fast64_t master, uint_fast64_t keys[16]) {
+        master = apply_permutation(master, Table::PC1, 56);
+        for (auto i = 0; i < 16; i++) {
+            master = circ_shift_key(master, Table::L_SHIFTS[i], true);
+            keys[i] = apply_permutation(master, Table::PC2, 48);
+        }
+    }
+}
+
+namespace DES {
+    Engine::Engine(uint_fast64_t master_key) {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        master_key = __builtin_bswap64(master_key);
+#endif
+        generate_round_keys(master_key, this->keys);
+    }
+
+    [[nodiscard]] uint_fast64_t Engine::encrypt(uint_fast64_t block) const {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        block = __builtin_bswap64(block);
+#endif
+        return process_with_keys(block, this->keys, true);
+    }
+
+    [[nodiscard]] uint_fast64_t Engine::decrypt(const uint_fast64_t block) const {
+        auto data = process_with_keys(block, this->keys, false);
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        data = __builtin_bswap64(data);
+#endif
+        return data;
     }
 }
