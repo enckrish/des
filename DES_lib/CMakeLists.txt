@@ -5,7 +5,9 @@ set(HEADER_FILES
 )
 
 set(SOURCE_FILES
-        des.cpp
+        DES.cpp
+        tables.cpp
+        utils.cpp
 )
 
 add_library(DES_lib STATIC ${SOURCE_FILES} ${HEADER_FILES})

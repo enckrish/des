@@ -1,16 +1,9 @@
+#include <cstdint>
 #include "DES.h"
-#include "tables.cpp"
-#include "utils.cpp"
+#include "des_tables.h"
 
-#include <iostream>
-#include <bitset>
-using namespace std;
-
-template<size_t N>
-std::bitset<N> rotate_right(const std::bitset<N> &b, size_t n) {
-    n %= N;
-    return (b >> n) | (b << (N - n));
-}
+bool read_bit(uint_fast64_t num, unsigned int k);
+void set_bit(uint_fast64_t& num, unsigned int k);
 
 namespace DES {
     /// Bit-wise permutes a value, based on a permutation array
@@ -43,8 +36,8 @@ namespace DES {
         msk <<= 28;
 
         key <<= n;
-        uint_fast64_t msk_v = key & msk;
-        key |= (msk_v >> 28);
+        const uint_fast64_t msk_v = key & msk;
+        key |= msk_v >> 28;
         key &= ~msk;
         return key;
     }
@@ -60,7 +53,7 @@ namespace DES {
         auto msk = static_cast<uint_fast64_t>(-1);
         msk <<= 28;
 
-        auto msk_v = key & ((1 << n) - 1);
+        const auto msk_v = key & (1 << n) - 1;
         key >>= n;
         key |= msk_v << (28 - n);
         key &= ~msk;
@@ -70,25 +63,30 @@ namespace DES {
     /// Rotates each half of key by n bits
     /// @param key 56-bit DES key, bits 56-64 set to 0
     /// @param n number of bits to rotate key
+    /// @param left if key is to be rotated left, else rotated right
     /// @return rotated key, bits 56-64 set to 0
-    uint_fast64_t circ_shift_key(uint_fast64_t key, const unsigned int n) {
-        const auto msk = 0xfffffff;
-        key = circ_lshift_u28((key >> 28), n) << 28 | circ_lshift_u28(key & msk, n);
+    uint_fast64_t circ_shift_key(uint_fast64_t key, const unsigned int n, const bool left) {
+        constexpr auto msk = 0xfffffff;
+        if (left) {
+            key = circ_lshift_u28(key >> 28, n) << 28 | circ_lshift_u28(key & msk, n);
+        } else {
+            key = circ_rshift_u28(key >> 28, n) << 28 | circ_rshift_u28(key & msk, n);
+        }
         return key;
     }
 
     /// Performs DES S-Box substitution
     /// @param block 48-bit intermediate data to apply S-Box substitution to
     /// @return 32-bit block
-    uint_fast32_t S_box_process(uint_fast64_t block) {
+    uint_fast32_t S_box_process(const uint_fast64_t block) {
         uint_fast32_t out{0};
 
         // split into groups of 6 bits
         // and apply them on the corresponding S-Box
         for (auto i = 0; i < 8; i++) {
             constexpr uint_fast32_t mmsk = 0x3f;
-            const auto v = (block >> (6 * (7 - i))) & mmsk;
-            const auto row = (v >> 5) | (v & 0b1);
+            const auto v = block >> (6 * (7 - i)) & mmsk;
+            const auto row = v >> 5 | v & 0b1;
             const auto col = (v & 0b011110) >> 1;
 
             out |= Table::S[i][row][col] << (i * 4);
@@ -104,17 +102,14 @@ namespace DES {
         return rb;
     }
 
-    uint_fast64_t process(uint_fast64_t block, uint_fast64_t key, const unsigned int rounds, bool encrypt) {
+    uint_fast64_t process(uint_fast64_t block, uint_fast64_t key, const unsigned int rounds, const bool encrypt) {
         block = apply_permutation(block, Table::IP, 64);
         key = apply_permutation(key, Table::PC1, 56);
         for (auto i = 0; i < rounds; i++) {
             // Calculate round key K_r
-            unsigned shift_index = i;
-            if (!encrypt) {
-                shift_index = rounds - i - 1;
-            }
-            const auto t_key = circ_shift_key(key, Table::SHIFTS[shift_index]);
-            const auto r_key = apply_permutation(t_key, Table::PC2, 48);
+            const unsigned shift_n = encrypt ? Table::L_SHIFTS[i] : Table::R_SHIFTS[i];
+            key = circ_shift_key(key, shift_n, encrypt);
+            const auto r_key = apply_permutation(key, Table::PC2, 48);
 
             // Apply round function on right half of block: F(B_r, K_r)
             auto rb = apply_round_fn(block & 0xffffffff, r_key);
@@ -122,10 +117,10 @@ namespace DES {
             // XOR with left half: B_l ^ F(B_r, K_r)
             rb ^= block >> 32;
             // B_r || B_l ^ F(B_r, K_r)
-            block = (block << 32) | rb;
+            block = block << 32 | rb;
         }
 
-        block = (block >> 32) | (block << 32);
+        block = block >> 32 | block << 32;
         block = apply_permutation(block, Table::FP, 64);
         return block;
     }

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "DES.h"
+#include "des_tables.h"
 #include <bitset>
 
 unsigned long rand64();
@@ -8,13 +9,13 @@ unsigned long rand64();
 template<size_t N>
 std::bitset<N> rotate_left(const std::bitset<N> &b, size_t n) {
     n %= N;
-    return (b << n) | (b >> (N - n));
+    return b << n | b >> (N - n);
 }
 
 template<size_t N>
 std::bitset<N> rotate_right(const std::bitset<N> &b, size_t n) {
     n %= N;
-    return (b >> n) | (b << (N - n));
+    return b >> n | b << (N - n);
 }
 
 TEST_CASE("28-bit rotation", "[ComponentTests]") {
@@ -36,7 +37,7 @@ TEST_CASE("28-bit rotation", "[ComponentTests]") {
         auto rot2bs = std::bitset<28>(data);
         rot2bs = rotate_left(rot2bs, 2);
 
-        const auto rot = (uint_fast64_t) rot2bs.to_ulong();
+        const auto rot = rot2bs.to_ulong();
         const auto rot_impl = DES::circ_lshift_u28(data, 2);
         CHECK(rot == rot_impl);
     }
@@ -50,7 +51,7 @@ TEST_CASE("Key Rotate", "[ComponentTests]") {
     rotbs_l = rotate_left(rotbs_l, 2);
 
     const auto rotbs = rotbs_l.to_ulong() << 28 | rotbs_r.to_ulong();
-    const auto rot_impl = DES::circ_shift_key(key, 2);
+    const auto rot_impl = DES::circ_shift_key(key, 2, true);
     CHECK(rotbs == rot_impl);
 }
 

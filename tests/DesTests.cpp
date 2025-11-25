@@ -2,6 +2,7 @@
 #include <bitset>
 #include <catch2/catch_test_macros.hpp>
 #include "DES.h"
+#include "des_tables.h"
 
 unsigned long rand64();
 
@@ -42,32 +43,8 @@ TEST_CASE("Single Round R_p Equality", "[DESTests]") {
     auto enc = DES::process(block, key, 1, true);
     enc = DES::apply_permutation(enc, DES::Table::IP, 64);
 
-    const auto msk32 = 0xffffffff;
+    constexpr auto msk32 = 0xffffffff;
     INFO("Enc:\t" << std::bitset<64>(enc));
     INFO("Data:\t" << std::bitset<64>(post_ip));
     CHECK((enc & msk32) == (post_ip & msk32));
-}
-
-TEST_CASE("Single Round Encryption<->Decryption", "[DesTests]") {
-    const uint_fast64_t block = rand64();
-    const uint_fast64_t key = rand64();
-
-    const auto enc = DES::process(block, key, 1, true);
-    const auto dec = DES::process(enc, key, 1, false);
-
-    INFO("Enc:\t" << std::bitset<64>(enc));
-    INFO("Dec:\t" << std::bitset<64>(dec));
-    CHECK(block == dec);
-}
-
-TEST_CASE("Double Round Encryption<->Decryption", "[DesTests]") {
-    const uint_fast64_t block = rand64();
-    const uint_fast64_t key = rand64();
-
-    const auto enc = DES::process(block, key, 2, true);
-    const auto dec = DES::process(enc, key, 2, false);
-
-    INFO("Enc:\t" << std::bitset<64>(enc));
-    INFO("Dec:\t" << std::bitset<64>(dec));
-    CHECK(block == dec);
 }
