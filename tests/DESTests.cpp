@@ -90,16 +90,14 @@ TEST_CASE("DES Benchmarks", "[DESTests]") {
     BENCHMARK_ADVANCED("Encryption")(Catch::Benchmark::Chronometer meter) {
         auto engine = DES::Engine(rand64());
         meter.measure([engine] {
-            const uint_fast64_t data = rand64();
-            auto _ = engine.encrypt(data);
+            auto _ = engine.encrypt(rand64());
         });
     };
 
     BENCHMARK_ADVANCED("Decryption")(Catch::Benchmark::Chronometer meter) {
         auto engine = DES::Engine(rand64());
         meter.measure([engine] {
-            const uint_fast64_t ciph = rand64();
-            auto _ = engine.decrypt(ciph);
+            auto _ = engine.decrypt(rand64());
         });
     };
 }

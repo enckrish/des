@@ -10,16 +10,8 @@ namespace DES {
     /// @return rotated key, bits 28-64 set to 0
     ///
     /// @note assumes arithmetic shift when using shift operators
-    uint_fast64_t circ_lshift_u28(uint_fast64_t key, const unsigned int n) {
-        // mask over invalid bits 56-64
-        auto msk = static_cast<uint_fast64_t>(-1);
-        msk <<= 28;
-
-        key <<= n;
-        const uint_fast64_t msk_v = key & msk;
-        key |= msk_v >> 28;
-        key &= ~msk;
-        return key;
+    uint_fast64_t circ_lshift_u28(const uint_fast64_t key, const unsigned int n) {
+        return (key << n | key >> (28 - n)) & 0x0FFFFFFF;
     }
 
     /// @brief Rotates a u28 right by n bits
@@ -29,15 +21,7 @@ namespace DES {
     ///
     /// @note assumes arithmetic shift when using shift operators
     uint_fast64_t circ_rshift_u28(uint_fast64_t key, const unsigned int n) {
-        // mask over invalid bits 56-64
-        auto msk = static_cast<uint_fast64_t>(-1);
-        msk <<= 28;
-
-        const auto msk_v = key & (1 << n) - 1;
-        key >>= n;
-        key |= msk_v << (28 - n);
-        key &= ~msk;
-        return key;
+        return ((key & ~(1 << n)) << (28 - n) | key >> n) & 0x0FFFFFFF;
     }
 
     /// Rotates each half of key by n bits
