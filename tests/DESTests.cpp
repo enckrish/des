@@ -1,6 +1,7 @@
 #include <random>
 #include <bitset>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark_all.hpp>
 #include "DES.h"
 
 unsigned long rand64();
@@ -29,7 +30,7 @@ TEST_CASE("DES Engine data retrieval", "[DESTests]") {
 }
 
 TEST_CASE("DES process()<->Engine Matching", "[DESTests]") {
-     uint_fast64_t key = rand64();
+    uint_fast64_t key = rand64();
     const DES::Engine engine(key);
 
     // Converting the key to BE-format to make it comparable to DES::Engine's,
@@ -38,7 +39,7 @@ TEST_CASE("DES process()<->Engine Matching", "[DESTests]") {
     key = __builtin_bswap64(key);
 #endif
 
-     uint_fast64_t data = rand64();
+    uint_fast64_t data = rand64();
 
     // To reduce data's endianness changes, we are assuming that data is
     // already in BE, but since DES::Engine will change the endianness of data
@@ -83,4 +84,22 @@ TEST_CASE("DES Complementation", "[DESTests]") {
     INFO("Enc(bar):\t" << std::bitset<64>(~enc));
     INFO("Enc_bar:\t" << std::bitset<64>(enc_bar));
     CHECK(enc == ~enc_bar);
+}
+
+TEST_CASE("DES Benchmarks", "[DESTests]") {
+    BENCHMARK_ADVANCED("Encryption")(Catch::Benchmark::Chronometer meter) {
+        auto engine = DES::Engine(rand64());
+        meter.measure([engine] {
+            const uint_fast64_t data = rand64();
+            auto _ = engine.encrypt(data);
+        });
+    };
+
+    BENCHMARK_ADVANCED("Decryption")(Catch::Benchmark::Chronometer meter) {
+        auto engine = DES::Engine(rand64());
+        meter.measure([engine] {
+            const uint_fast64_t ciph = rand64();
+            auto _ = engine.decrypt(ciph);
+        });
+    };
 }

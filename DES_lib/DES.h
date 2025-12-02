@@ -38,3 +38,5 @@ namespace DES {
         [[nodiscard]] uint_fast64_t decrypt(uint_fast64_t block) const;
     };
 }
+
+#include "DES.tpp"

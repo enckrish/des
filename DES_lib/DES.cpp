@@ -3,29 +3,7 @@
 
 #include "DES_tables.h"
 
-bool read_bit(uint_fast64_t num, unsigned int k);
-
-void set_bit(uint_fast64_t &num, unsigned int k);
-
 namespace DES {
-    /// Bit-wise permutes a value, based on a permutation array
-    /// @tparam T type of input to be permuted
-    /// @tparam V type of permutation array
-    /// @param value input to apply permutation on
-    /// @param perm permutation array; perm[i] stores index in value of bit to store at index i of out
-    /// @param perm_size length of `perm`
-    /// @return permutated value
-    template<typename T, typename V>
-    T apply_permutation(const T value, const V perm[], const int perm_size) {
-        T out{0};
-        for (auto i = 0; i < perm_size; i++) {
-            if (read_bit(value, perm[i] - 1)) {
-                set_bit(out, i);
-            }
-        }
-        return out;
-    }
-
     /// @brief Rotates a u28 left by n bits
     /// @param key value with bits 28-64 set to 0
     /// @param n number of bits to rotate key
