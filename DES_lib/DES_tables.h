@@ -129,7 +129,4 @@ namespace DES::Table {
     constexpr uint8_t L_SHIFTS[16] = {
         1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1
     };
-    constexpr uint8_t R_SHIFTS[16] = {
-        0, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1
-    };
 }

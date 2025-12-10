@@ -16,13 +16,9 @@ namespace DES {
     template<typename T, typename V>
     T apply_permutation(T value, const V perm[], int perm_size, int input_width);
 
-    uint_fast64_t circ_lshift_u28(uint_fast64_t key, unsigned int n);
-
-    uint_fast64_t circ_shift_key(uint_fast64_t key, unsigned int n, bool left);
+    uint_fast64_t apply_round_fn(uint_fast64_t rb, const uint_fast64_t r_key);
 
     uint_fast32_t S_box_process(uint_fast32_t block);
-
-    uint_fast64_t round_transform(uint_fast64_t block, uint_fast64_t r_key);
 
     /// Engine is the user facing interface for using the DES implementation.
     /// It removes need for the user to cache round keys and perform BigEndian conversions

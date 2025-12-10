@@ -3,6 +3,10 @@
 
 #include "DES_tables.h"
 
+#include <iostream>
+#include <chrono> // For std::chrono::seconds
+#include <thread> // For std::this_thread::sleep_for
+
 namespace DES {
     /// @brief Rotates a u28 left by n bits
     /// @param key value with bits 28-64 set to 0
@@ -14,29 +18,6 @@ namespace DES {
         return (key << n | key >> (28 - n)) & 0x0FFFFFFF;
     }
 
-    /// @brief Rotates a u28 right by n bits
-    /// @param key value with bits 28-64 set to 0
-    /// @param n number of bits to rotate key
-    /// @return rotated key, bits 28-64 set to 0
-    ///
-    /// @note assumes arithmetic shift when using shift operators
-    uint_fast64_t circ_rshift_u28(uint_fast64_t key, const unsigned int n) {
-        return ((key & ~(1 << n)) << (28 - n) | key >> n) & 0x0FFFFFFF;
-    }
-
-    /// Rotates each half of key by n bits
-    /// @param key 56-bit DES key, bits 56-64 set to 0
-    /// @param n number of bits to rotate key
-    /// @param left if key is to be rotated left, else rotated right
-    /// @return rotated key, bits 56-64 set to 0
-    uint_fast64_t circ_shift_key(const uint_fast64_t key, const unsigned int n, const bool left) {
-        constexpr auto msk = 0xfffffff;
-        if (left) {
-            return circ_lshift_u28(key >> 28, n) << 28 | circ_lshift_u28(key & msk, n);
-        }
-        return circ_rshift_u28(key >> 28, n) << 28 | circ_rshift_u28(key & msk, n);
-    }
-
     /// Performs DES S-Box substitution
     /// @param block 48-bit intermediate data to apply S-Box substitution to
     /// @return 32-bit block
@@ -46,14 +27,12 @@ namespace DES {
         // split into groups of 6 bits
         // and apply them on the corresponding S-Box
         for (auto i = 0; i < 8; i++) {
-            const auto v = block >> (6 * (7-i)) & 0b111111;
+            const auto v = block >> (6 * (7 - i)) & 0b111111;
             const auto row = v >> 4 & 0b10 | v & 0b1;
             const auto col = (v & 0b011110) >> 1;
 
-            out |= Table::S[i][row][col];
-            out <<= 4;
+            out |= Table::S[i][row][col] << (4 * (7 - i));
         }
-        out >>= 4;
         return out;
     }
 
@@ -65,11 +44,12 @@ namespace DES {
         return rb;
     }
 
-    uint_fast64_t process_with_keys(uint_fast64_t block, const uint_fast64_t keys[16], const bool encrypt) {
-        block = apply_permutation(block, Table::IP, 64, 64);
+    template<bool Encrypt>
+    uint_fast64_t process_with_keys(const uint_fast64_t blk, const uint_fast64_t keys[16]) {
+        auto block = apply_permutation(blk, Table::IP, 64, 64);
         for (auto i = 0; i < 16; i++) {
             // Calculate round key K_r
-            const unsigned key_index = encrypt ? i : 16 - i - 1;
+            const unsigned key_index = Encrypt ? i : 16 - i - 1;
             // Apply round function on right half of block: F(B_r, K_r)
             auto rb = apply_round_fn(block & 0xffffffff, keys[key_index]);
 
@@ -87,7 +67,9 @@ namespace DES {
     void generate_round_keys(uint_fast64_t master, uint_fast64_t keys[16]) {
         master = apply_permutation(master, Table::PC1, 56, 64);
         for (auto i = 0; i < 16; i++) {
-            master = circ_shift_key(master, Table::L_SHIFTS[i], true);
+            constexpr auto msk = 0xfffffff;
+            const auto sft = Table::L_SHIFTS[i];
+            master = circ_lshift_u28(master >> 28, sft) << 28 | circ_lshift_u28(master & msk, sft);
             keys[i] = apply_permutation(master, Table::PC2, 48, 56);
         }
     }
@@ -99,10 +81,10 @@ namespace DES {
     }
 
     [[nodiscard]] uint_fast64_t Engine::encrypt(const uint_fast64_t block) const {
-        return process_with_keys(block, this->keys, true);
+        return process_with_keys<true>(block, this->keys);
     }
 
     [[nodiscard]] uint_fast64_t Engine::decrypt(const uint_fast64_t block) const {
-        return process_with_keys(block, this->keys, false);
+        return process_with_keys<false>(block, this->keys);
     }
 }

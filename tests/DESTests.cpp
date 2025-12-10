@@ -1,7 +1,6 @@
 #include <random>
 #include <bitset>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/benchmark/catch_benchmark_all.hpp>
 #include "DES.h"
 
 unsigned long rand64();
@@ -33,22 +32,6 @@ TEST_CASE("DES Complementation", "[DESTests]") {
     INFO("Enc(bar):\t" << std::bitset<64>(~enc));
     INFO("Enc_bar:\t" << std::bitset<64>(enc_bar));
     CHECK(enc == ~enc_bar);
-}
-
-TEST_CASE("DES Benchmarks", "[DESTests]") {
-    BENCHMARK_ADVANCED("Encryption")(Catch::Benchmark::Chronometer meter) {
-        auto engine = DES::Engine(rand64());
-        meter.measure([engine] {
-            auto _ = engine.encrypt(rand64());
-        });
-    };
-
-    BENCHMARK_ADVANCED("Decryption")(Catch::Benchmark::Chronometer meter) {
-        auto engine = DES::Engine(rand64());
-        meter.measure([engine] {
-            auto _ = engine.decrypt(rand64());
-        });
-    };
 }
 
 TEST_CASE("DES Test Cases", "[DESTests]") {
