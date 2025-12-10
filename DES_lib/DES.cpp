@@ -29,14 +29,12 @@ namespace DES {
     /// @param n number of bits to rotate key
     /// @param left if key is to be rotated left, else rotated right
     /// @return rotated key, bits 56-64 set to 0
-    uint_fast64_t circ_shift_key(uint_fast64_t key, const unsigned int n, const bool left) {
+    uint_fast64_t circ_shift_key(const uint_fast64_t key, const unsigned int n, const bool left) {
         constexpr auto msk = 0xfffffff;
         if (left) {
-            key = circ_lshift_u28(key >> 28, n) << 28 | circ_lshift_u28(key & msk, n);
-        } else {
-            key = circ_rshift_u28(key >> 28, n) << 28 | circ_rshift_u28(key & msk, n);
+            return circ_lshift_u28(key >> 28, n) << 28 | circ_lshift_u28(key & msk, n);
         }
-        return key;
+        return circ_rshift_u28(key >> 28, n) << 28 | circ_rshift_u28(key & msk, n);
     }
 
     /// Performs DES S-Box substitution
@@ -48,49 +46,27 @@ namespace DES {
         // split into groups of 6 bits
         // and apply them on the corresponding S-Box
         for (auto i = 0; i < 8; i++) {
-            constexpr uint_fast32_t msk = 0x3f;
-            const auto v = block >> (6 * (7 - i)) & msk;
-            const auto row = v >> 5 | v & 0b1;
+            const auto v = block >> (6 * (7-i)) & 0b111111;
+            const auto row = v >> 4 & 0b10 | v & 0b1;
             const auto col = (v & 0b011110) >> 1;
 
-            out |= Table::S[i][row][col] << (i * 4);
+            out |= Table::S[i][row][col];
+            out <<= 4;
         }
+        out >>= 4;
         return out;
     }
 
     uint_fast64_t apply_round_fn(uint_fast64_t rb, const uint_fast64_t r_key) {
-        rb = apply_permutation(rb, Table::E, 48);
+        rb = apply_permutation(rb, Table::E, 48, 32);
         rb ^= r_key;
         rb = S_box_process(rb);
-        rb = apply_permutation(rb, Table::P, 32);
+        rb = apply_permutation(rb, Table::P, 32, 32);
         return rb;
     }
 
-    uint_fast64_t process(uint_fast64_t block, uint_fast64_t key, const bool encrypt) {
-        block = apply_permutation(block, Table::IP, 64);
-        key = apply_permutation(key, Table::PC1, 56);
-        for (auto i = 0; i < 16; i++) {
-            // Calculate round key K_r
-            const unsigned shift_n = encrypt ? Table::L_SHIFTS[i] : Table::R_SHIFTS[i];
-            key = circ_shift_key(key, shift_n, encrypt);
-            const auto r_key = apply_permutation(key, Table::PC2, 48);
-
-            // Apply round function on right half of block: F(B_r, K_r)
-            auto rb = apply_round_fn(block & 0xffffffff, r_key);
-
-            // XOR with left half: B_l ^ F(B_r, K_r)
-            rb ^= block >> 32;
-            // B_r || B_l ^ F(B_r, K_r)
-            block = block << 32 | rb;
-        }
-
-        block = block >> 32 | block << 32;
-        block = apply_permutation(block, Table::FP, 64);
-        return block;
-    }
-
     uint_fast64_t process_with_keys(uint_fast64_t block, const uint_fast64_t keys[16], const bool encrypt) {
-        block = apply_permutation(block, Table::IP, 64);
+        block = apply_permutation(block, Table::IP, 64, 64);
         for (auto i = 0; i < 16; i++) {
             // Calculate round key K_r
             const unsigned key_index = encrypt ? i : 16 - i - 1;
@@ -104,39 +80,29 @@ namespace DES {
         }
 
         block = block >> 32 | block << 32;
-        block = apply_permutation(block, Table::FP, 64);
+        block = apply_permutation(block, Table::FP, 64, 64);
         return block;
     }
 
     void generate_round_keys(uint_fast64_t master, uint_fast64_t keys[16]) {
-        master = apply_permutation(master, Table::PC1, 56);
+        master = apply_permutation(master, Table::PC1, 56, 64);
         for (auto i = 0; i < 16; i++) {
             master = circ_shift_key(master, Table::L_SHIFTS[i], true);
-            keys[i] = apply_permutation(master, Table::PC2, 48);
+            keys[i] = apply_permutation(master, Table::PC2, 48, 56);
         }
     }
 }
 
 namespace DES {
-    Engine::Engine(uint_fast64_t master_key) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        master_key = __builtin_bswap64(master_key);
-#endif
-        generate_round_keys(master_key, this->keys);
+    Engine::Engine(const uint_fast64_t master) {
+        generate_round_keys(master, this->keys);
     }
 
-    [[nodiscard]] uint_fast64_t Engine::encrypt(uint_fast64_t block) const {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        block = __builtin_bswap64(block);
-#endif
+    [[nodiscard]] uint_fast64_t Engine::encrypt(const uint_fast64_t block) const {
         return process_with_keys(block, this->keys, true);
     }
 
     [[nodiscard]] uint_fast64_t Engine::decrypt(const uint_fast64_t block) const {
-        auto data = process_with_keys(block, this->keys, false);
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        data = __builtin_bswap64(data);
-#endif
-        return data;
+        return process_with_keys(block, this->keys, false);
     }
 }

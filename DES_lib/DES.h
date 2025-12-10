@@ -14,7 +14,7 @@ namespace DES {
     uint_fast64_t process(uint_fast64_t block, uint_fast64_t key, bool encrypt);
 
     template<typename T, typename V>
-    T apply_permutation(T value, const V perm[], int perm_size);
+    T apply_permutation(T value, const V perm[], int perm_size, int input_width);
 
     uint_fast64_t circ_lshift_u28(uint_fast64_t key, unsigned int n);
 
@@ -31,7 +31,7 @@ namespace DES {
         uint_fast64_t keys[16]{};
 
     public:
-        explicit Engine(uint_fast64_t master_key);
+        explicit Engine(uint_fast64_t master);
 
         [[nodiscard]] uint_fast64_t encrypt(uint_fast64_t block) const;
 
