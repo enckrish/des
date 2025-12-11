@@ -17,15 +17,13 @@ namespace DES {
     template<typename T, typename V>
     constexpr T apply_permutation(T value, const V perm[], int perm_size, int input_width);
 
-    constexpr uint_fast64_t apply_round_fn(uint_fast64_t rb, const uint_fast64_t r_key);
-
-    constexpr uint_fast32_t S_box_process(uint_fast32_t block);
+    constexpr uint_fast64_t apply_round_fn(uint_fast64_t rb, uint_fast64_t r_key);
 
     /// Engine is the user facing interface for using the DES implementation.
     /// It removes need for the user to cache round keys and perform BigEndian conversions
     /// by doing those by itself.
     class Engine {
-        std::array<uint_fast64_t, 16> keys;
+        std::array<uint_fast64_t, 16> keys{};
 
     public:
         explicit Engine(uint_fast64_t master);

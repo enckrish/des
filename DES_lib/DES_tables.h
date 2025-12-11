@@ -1,6 +1,8 @@
 #ifndef S_DES_TABLES_H
 #define S_DES_TABLES_H
 #include <array>
+using std::array;
+
 #include <cstdint>
 
 #endif //S_DES_TABLES_H
@@ -133,14 +135,16 @@ namespace DES::Table {
 }
 
 namespace DES::LUT {
-    consteval std::array<std::array<uint_fast32_t, 64>, 8> compute_SP_LUT() {
-        std::array<std::array<uint_fast32_t, 64>, 8> SP_LUT{};
+    consteval array<array<uint_fast32_t, 64>, 8> compute_SP_LUT() {
+        array<array<uint_fast32_t, 64>, 8> SP_LUT{};
         for (int i = 0; i < 8; ++i) {
             for (int v = 0; v < 64; ++v) {
                 const auto row = v >> 4 & 0b10 | v & 0b1;
                 const auto col = (v & 0b011110) >> 1;
                 SP_LUT[i][v] = apply_permutation(
-                    // not casting Table::S to wider int before shifting results in wrong values
+                    // not casting Table::S to wider uint before shifting results in wrong values
+                    // as implicitly it gets expanded to a signed int, and when its sign bit is set due to the shift
+                    // the result becomes wrong
                     static_cast<uint_fast32_t>(Table::S[i][row][col]) << (4 * (7 - i)),
                     Table::P, 32, 32
                 );
@@ -150,4 +154,74 @@ namespace DES::LUT {
     }
 
     constexpr auto SP = compute_SP_LUT();
+
+    consteval array<array<uint_fast64_t, 256>, 8> compute_IP_LUT() {
+        array<array<uint_fast64_t, 256>, 8> IP_LUT{};
+        for (uint_fast64_t v = 0; v < 256; ++v) {
+            for (int i = 7; i >= 0; --i) {
+                auto b = v << (8 * i);
+                b = apply_permutation(b, Table::IP, 64, 64);
+                IP_LUT[i][v] = b;
+            }
+        }
+        return IP_LUT;
+    }
+
+    constexpr auto IP = compute_IP_LUT();
+
+    consteval array<array<uint_fast64_t, 256>, 8> compute_FP_LUT() {
+        array<array<uint_fast64_t, 256>, 8> FP_LUT{};
+        for (uint_fast64_t v = 0; v < 256; ++v) {
+            for (int i = 7; i >= 0; --i) {
+                auto b = v << (8 * i);
+                b = apply_permutation(b, Table::FP, 64, 64);
+                FP_LUT[i][v] = b;
+            }
+        }
+        return FP_LUT;
+    }
+
+    constexpr auto FP = compute_FP_LUT();
+
+    consteval array<array<uint_fast64_t, 256>, 4> compute_E_LUT() {
+        array<array<uint_fast64_t, 256>, 4> E_LUT{};
+        for (uint_fast64_t v = 0; v < 256; ++v) {
+            for (int i = 3; i >= 0; --i) {
+                auto b = v << (8 * i);
+                b = apply_permutation(b, Table::E, 48, 32);
+                E_LUT[i][v] = b;
+            }
+        }
+        return E_LUT;
+    }
+
+    constexpr auto E = compute_E_LUT();
+
+    consteval array<array<uint_fast64_t, 256>, 8> compute_PC1_LUT() {
+        array<array<uint_fast64_t, 256>, 8> PC1_LUT{};
+        for (uint_fast64_t v = 0; v < 256; ++v) {
+            for (int i = 7; i >= 0; --i) {
+                auto b = v << (8 * i);
+                b = apply_permutation(b, Table::PC1, 56, 64);
+                PC1_LUT[i][v] = b;
+            }
+        }
+        return PC1_LUT;
+    }
+
+    constexpr auto PC1 = compute_PC1_LUT();
+
+    consteval array<array<uint_fast64_t, 256>, 7> compute_PC2_LUT() {
+        array<array<uint_fast64_t, 256>, 7> PC2_LUT{};
+        for (uint_fast64_t v = 0; v < 256; ++v) {
+            for (int i = 6; i >= 0; --i) {
+                auto b = v << (8 * i);
+                b = apply_permutation(b, Table::PC2, 48, 56);
+                PC2_LUT[i][v] = b;
+            }
+        }
+        return PC2_LUT;
+    }
+
+    constexpr auto PC2 = compute_PC2_LUT();
 }

@@ -12,25 +12,33 @@ namespace DES {
     /// @return rotated key, bits 28-64 set to 0
     ///
     /// @note assumes arithmetic shift when using shift operators
-    constexpr uint_fast64_t circ_lshift_u28(const uint_fast64_t key, const unsigned int n) {
-        return (key << n | key >> (28 - n)) & 0x0FFFFFFF;
+    template<int N>
+    constexpr uint_fast64_t circ_lshift_u28(const uint_fast64_t key) {
+        return (key << N | key >> (28 - N)) & 0x0FFFFFFF;
     }
 
-    constexpr uint_fast64_t apply_round_fn(uint_fast64_t rb, const uint_fast64_t r_key) {
-        rb = apply_permutation(rb, Table::E, 48, 32);
-        rb ^= r_key;
+    constexpr uint_fast64_t apply_round_fn(const uint_fast64_t rb, const uint_fast64_t r_key) {
+        uint_fast64_t be{};
+        for (int i = 3; i >= 0; i--) {
+            be ^= LUT::E[i][rb >> (8 * i) & 0xff];
+        }
+        be ^= r_key;
 
         // applying S-box and P permutation at once
-        decltype(rb) b{};
+        uint_fast64_t bsp{};
         for (auto i = 0; i < 8; i++) {
-            b ^= LUT::SP[i][rb >> 6 * (7 - i) & 0b111111];
+            bsp ^= LUT::SP[i][be >> 6 * (7 - i) & 0b111111];
         }
-        return b;
+        return bsp;
     }
 
     template<typename Iter>
     uint_fast64_t process_with_keys(const uint_fast64_t blk, Iter key_begin, const Iter &key_end) {
-        auto block = apply_permutation(blk, Table::IP, 64, 64);
+        uint_fast64_t block{};
+        for (int i = 7; i >= 0; i--) {
+            block ^= LUT::IP[i][blk >> (8 * i) & 0xff];
+        }
+
         for (; key_begin != key_end; ++key_begin) {
             // Calculate round key K_r
             // Apply round function on right half of block: F(B_r, K_r)
@@ -43,17 +51,40 @@ namespace DES {
         }
 
         block = block >> 32 | block << 32;
-        block = apply_permutation(block, Table::FP, 64, 64);
-        return block;
+        uint_fast64_t fblk{};
+        for (int i = 7; i >= 0; i--) {
+            fblk ^= LUT::FP[i][block >> (8 * i) & 0xff];
+        }
+        return fblk;
     }
 
-    void generate_round_keys(uint_fast64_t master, std::array<uint_fast64_t, 16> &keys) {
-        master = apply_permutation(master, Table::PC1, 56, 64);
+    void generate_round_keys(const uint_fast64_t master, std::array<uint_fast64_t, 16> &keys) {
+        uint_fast64_t mkey{};
+
+        // PC-1 permutation
+        int lv{};
+        for (lv = 7; lv >= 0; lv--) {
+            mkey ^= LUT::PC1[lv][master >> (8 * lv) & 0xff];
+        }
+
         for (auto i = 0; i < 16; i++) {
+            // Key rotate
             constexpr auto msk = 0xfffffff;
-            const auto sft = Table::L_SHIFTS[i];
-            master = circ_lshift_u28(master >> 28, sft) << 28 | circ_lshift_u28(master & msk, sft);
-            keys[i] = apply_permutation(master, Table::PC2, 48, 56);
+            const auto m_update = [&]<int N> {
+                mkey = circ_lshift_u28<N>(mkey >> 28) << 28 | circ_lshift_u28<N>(mkey & msk);
+            };
+            if (Table::L_SHIFTS[i] == 1) {
+                m_update.operator()<1>();
+            } else {
+                m_update.operator()<2>();
+            }
+
+            // PC-2 permutation
+            uint_fast64_t ki{};
+            for (lv = 7; lv >= 0; lv--) {
+                ki ^= LUT::PC2[lv][mkey >> (8 * lv) & 0xff];
+            }
+            keys[i] = ki;
         }
     }
 }
