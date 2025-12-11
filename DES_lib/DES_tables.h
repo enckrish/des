@@ -169,19 +169,20 @@ namespace DES::LUT {
 
     constexpr auto IP = compute_IP_LUT();
 
-    consteval array<array<uint_fast64_t, 256>, 8> compute_FP_LUT() {
-        array<array<uint_fast64_t, 256>, 8> FP_LUT{};
+    consteval array<array<uint_fast64_t, 256>, 8> compute_Swap_FP_LUT() {
+        array<array<uint_fast64_t, 256>, 8> Swap_FP_LUT{};
         for (uint_fast64_t v = 0; v < 256; ++v) {
             for (int i = 7; i >= 0; --i) {
                 auto b = v << (8 * i);
+                b = b >> 32 | b << 32;
                 b = apply_permutation(b, Table::FP, 64, 64);
-                FP_LUT[i][v] = b;
+                Swap_FP_LUT[i][v] = b;
             }
         }
-        return FP_LUT;
+        return Swap_FP_LUT;
     }
 
-    constexpr auto FP = compute_FP_LUT();
+    constexpr auto Swap_FP = compute_Swap_FP_LUT();
 
     consteval array<array<uint_fast64_t, 256>, 4> compute_E_LUT() {
         array<array<uint_fast64_t, 256>, 4> E_LUT{};

@@ -8,7 +8,6 @@
 namespace DES {
     /// @brief Rotates a u28 left by n bits
     /// @param key value with bits 28-64 set to 0
-    /// @param n number of bits to rotate key
     /// @return rotated key, bits 28-64 set to 0
     ///
     /// @note assumes arithmetic shift when using shift operators
@@ -18,42 +17,54 @@ namespace DES {
     }
 
     constexpr uint_fast64_t apply_round_fn(const uint_fast64_t rb, const uint_fast64_t r_key) {
+        // E perm
         uint_fast64_t be{};
-        for (int i = 3; i >= 0; i--) {
+#pragma GCC unroll 4
+        for (int i = 0; i < 4; i++) {
             be ^= LUT::E[i][rb >> (8 * i) & 0xff];
         }
+
+        // XOR with key
         be ^= r_key;
 
         // applying S-box and P permutation at once
         uint_fast64_t bsp{};
+#pragma GCC unroll 8
         for (auto i = 0; i < 8; i++) {
             bsp ^= LUT::SP[i][be >> 6 * (7 - i) & 0b111111];
         }
         return bsp;
     }
 
-    template<typename Iter>
-    uint_fast64_t process_with_keys(const uint_fast64_t blk, Iter key_begin, const Iter &key_end) {
+    template<bool Encrypt>
+    uint_fast64_t process_with_keys(const uint_fast64_t blk, const std::array<uint_fast64_t, 16> &keys) {
+        // IP
         uint_fast64_t block{};
-        for (int i = 7; i >= 0; i--) {
+#pragma GCC unroll 8
+        for (int i = 0; i < 8; i++) {
             block ^= LUT::IP[i][blk >> (8 * i) & 0xff];
         }
 
-        for (; key_begin != key_end; ++key_begin) {
+#pragma GCC unroll 4
+        for (auto i = 0; i < 16; i++) {
+            const auto lb = block >> 32;
+            const auto rb = block & 0xFFFFFFFF;
+
             // Calculate round key K_r
+            const auto key_index = Encrypt ? i : 15 - i;
             // Apply round function on right half of block: F(B_r, K_r)
-            auto rb = apply_round_fn(block & 0xffffffff, *key_begin);
+            const auto rrb = apply_round_fn(rb, keys[key_index]);
 
             // XOR with left half: B_l ^ F(B_r, K_r)
-            rb ^= block >> 32;
             // B_r || B_l ^ F(B_r, K_r)
-            block = block << 32 | rb;
+            block = rb << 32 | rrb ^ lb;
         }
 
-        block = block >> 32 | block << 32;
+        // L-R Swap + FP
         uint_fast64_t fblk{};
-        for (int i = 7; i >= 0; i--) {
-            fblk ^= LUT::FP[i][block >> (8 * i) & 0xff];
+#pragma GCC unroll 8
+        for (int i = 0; i < 8; i++) {
+            fblk ^= LUT::Swap_FP[i][block >> (8 * i) & 0xff];
         }
         return fblk;
     }
@@ -63,10 +74,12 @@ namespace DES {
 
         // PC-1 permutation
         int lv{};
-        for (lv = 7; lv >= 0; lv--) {
+#pragma GCC unroll 8
+        for (lv = 0; lv < 8; lv++) {
             mkey ^= LUT::PC1[lv][master >> (8 * lv) & 0xff];
         }
 
+#pragma GCC unroll 4
         for (auto i = 0; i < 16; i++) {
             // Key rotate
             constexpr auto msk = 0xfffffff;
@@ -81,7 +94,8 @@ namespace DES {
 
             // PC-2 permutation
             uint_fast64_t ki{};
-            for (lv = 7; lv >= 0; lv--) {
+#pragma GCC unroll 7
+            for (lv = 0; lv < 7; lv++) {
                 ki ^= LUT::PC2[lv][mkey >> (8 * lv) & 0xff];
             }
             keys[i] = ki;
@@ -95,10 +109,10 @@ namespace DES {
     }
 
     [[nodiscard]] uint_fast64_t Engine::encrypt(const uint_fast64_t block) const {
-        return process_with_keys(block, this->keys.cbegin(), this->keys.cend());
+        return process_with_keys<true>(block, this->keys);
     }
 
     [[nodiscard]] uint_fast64_t Engine::decrypt(const uint_fast64_t block) const {
-        return process_with_keys(block, this->keys.crbegin(), this->keys.crend());
+        return process_with_keys<false>(block, this->keys);
     }
 }

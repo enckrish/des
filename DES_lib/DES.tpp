@@ -1,5 +1,4 @@
-#include <bitset>
-#include <immintrin.h>
+#pragma once
 
 namespace DES {
     /// Bit-wise permutes a value, based on a permutation array
