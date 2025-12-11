@@ -1,5 +1,6 @@
 #ifndef S_DES_TABLES_H
 #define S_DES_TABLES_H
+#include <array>
 #include <cstdint>
 
 #endif //S_DES_TABLES_H
@@ -129,4 +130,24 @@ namespace DES::Table {
     constexpr uint8_t L_SHIFTS[16] = {
         1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1
     };
+}
+
+namespace DES::LUT {
+    consteval std::array<std::array<uint_fast32_t, 64>, 8> compute_SP_LUT() {
+        std::array<std::array<uint_fast32_t, 64>, 8> SP_LUT{};
+        for (int i = 0; i < 8; ++i) {
+            for (int v = 0; v < 64; ++v) {
+                const auto row = v >> 4 & 0b10 | v & 0b1;
+                const auto col = (v & 0b011110) >> 1;
+                SP_LUT[i][v] = apply_permutation(
+                    // not casting Table::S to wider int before shifting results in wrong values
+                    static_cast<uint_fast32_t>(Table::S[i][row][col]) << (4 * (7 - i)),
+                    Table::P, 32, 32
+                );
+            }
+        }
+        return SP_LUT;
+    }
+
+    constexpr auto SP = compute_SP_LUT();
 }

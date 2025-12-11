@@ -4,14 +4,12 @@
 // A simple example of using the DES library
 
 int main() {
-    // MO: operate on LE values only, convert DES-atoms for LE arch
     constexpr uint64_t key = 0x133457799BBCDFF1;
     constexpr uint64_t data = 0x0123456789ABCDEF;
 
     std::cout << "Key:\t\t" << std::hex << key << std::endl;
     std::cout << "Data:\t\t" << std::hex << data << std::endl;
 
-    // Engine is guaranteed to now correctly change it to big endian data
     const DES::Engine engine(key);
 
     const auto enc = engine.encrypt(data);

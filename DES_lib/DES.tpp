@@ -10,7 +10,7 @@ namespace DES {
     /// @param perm_size length of `perm`
     /// @return permutated value (little-endian)
     template<typename T, typename V>
-T apply_permutation(const T value, const V perm[], const int perm_size, const int input_width) {
+    constexpr T apply_permutation(const T value, const V perm[], const int perm_size, const int input_width) {
         T out{0};
         for (int i = 0; i < perm_size; ++i) {
             int src_pos = input_width - perm[i];
