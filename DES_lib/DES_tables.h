@@ -139,7 +139,7 @@ namespace DES::LUT {
         array<array<uint_fast32_t, 64>, 8> SP_LUT{};
         for (int i = 0; i < 8; ++i) {
             for (int v = 0; v < 64; ++v) {
-                const auto row = v >> 4 & 0b10 | v & 0b1;
+                const auto row = (v >> 4 & 0b10) | (v & 0b1);
                 const auto col = (v & 0b011110) >> 1;
                 SP_LUT[i][v] = apply_permutation(
                     // not casting Table::S to wider uint before shifting results in wrong values

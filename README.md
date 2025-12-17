@@ -48,13 +48,14 @@ The library currently works on a **single block at a time** and does not support
 encryption/decryption.
 
 **System Specs:**
-My machine runs **Fedora 43** on a **Ryzen AI 7 350**, which reaches **5 GHz** clock speeds on a single thread during the benchmarks. The measurements below are specific to this hardware:
+My machine runs **Fedora 43** on a **Ryzen AI 7 350**, which reaches **5 GHz** clock speeds on a single thread during
+the benchmarks. The figures inside the parantheses are with `-march=native` flag on in CMake. The measurements below are
+specific to my machine:
 
-| Procedure          | Time Taken (ns) | Estimated Clock Cycles |
-|--------------------|-----------------|------------------------|
-| **Key Generation** | 28 - 29         | 145                    |
-| **Encryption**     | 84 - 85         | 425                    |
-| **Decryption**     | 84 - 85         | 425                    |
+| Procedure                 | Time Taken (ns) | Estimated Clock Cycles |
+|---------------------------|-----------------|------------------------|
+| **Key Generation**        | 28 - 29 (24-25) | 145 (125)              |
+| **Encryption/Decryption** | 84 - 85 (76-77) | 425 (385)              |
 
 **Optimizations Applied:**
 
@@ -65,6 +66,8 @@ My machine runs **Fedora 43** on a **Ryzen AI 7 350**, which reaches **5 GHz** c
   to implement all permutations and S-box operations.
 * **[Explicit loop unrolling](https://github.com/enckrish/des/commit/533be8543e21c954d0cc0776dec27254ef9cddbe)** (GCC
   only).
+* **Using `uint_fast32_t` and `uint_fast64_t`**: Explicitly using sized ints resulted in slowdowns of ~5% (tested by
+  replacing `uint_fast32_t` with `uint32_t`). The *"fast"* ints resolve to the fastest type for the arch.
 
 ### What I plan to add next
 

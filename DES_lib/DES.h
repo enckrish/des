@@ -1,7 +1,7 @@
 #ifndef S_DES_DES_H
 #define S_DES_DES_H
+#include <array>
 #include <cstdint>
-
 #endif //S_DES_DES_H
 
 namespace DES {

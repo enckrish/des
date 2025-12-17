@@ -1,4 +1,3 @@
-#include <cstdint>
 #include "DES.h"
 
 #include "DES_tables.h"
@@ -58,7 +57,7 @@ namespace DES {
 
             // XOR with left half: B_l ^ F(B_r, K_r)
             // B_r || B_l ^ F(B_r, K_r)
-            block = rb << 32 | rrb ^ lb;
+            block = (rb << 32) | (rrb ^ lb);
         }
 
         // L-R Swap + FP
