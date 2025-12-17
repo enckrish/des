@@ -25,10 +25,18 @@ namespace DES {
         uint_fast64_t keys[16]{};
 
     public:
+        /// Initiates the Engine class for further encryption or decryption
+        /// @param master 64-bit DES key
         explicit Engine(uint_fast64_t master);
 
+        /// Encrypts a data block
+        /// @param block 64-bit block of data to encrypt
+        /// @return 64-bit encrypted block
         [[nodiscard]] uint_fast64_t encrypt(uint_fast64_t block) const;
 
+        /// Decrypts a data block
+        /// @param block 64-bit block of data to decrypt
+        /// @return 64-bit decrypted block
         [[nodiscard]] uint_fast64_t decrypt(uint_fast64_t block) const;
     };
 }
