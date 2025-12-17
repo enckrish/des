@@ -1,6 +1,5 @@
 #ifndef S_DES_DES_H
 #define S_DES_DES_H
-#include <array>
 #include <cstdint>
 
 #endif //S_DES_DES_H
@@ -23,7 +22,7 @@ namespace DES {
     /// It removes need for the user to cache round keys and perform BigEndian conversions
     /// by doing those by itself.
     class Engine {
-        std::array<uint_fast64_t, 16> keys{};
+        uint_fast64_t keys[16]{};
 
     public:
         explicit Engine(uint_fast64_t master);
